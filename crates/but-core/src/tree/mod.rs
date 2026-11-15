@@ -392,7 +392,7 @@ pub fn apply_worktree_changes<'repo>(
 /// selections in the old or new image respectively. This is necessary to maintain the right order in the face of context lines.
 /// Note that the order of changes is still affected by what which selection comes first, i.e. old and new, or vice versa, if these
 /// selections are in the same hunk.
-fn to_additive_hunks(
+pub(crate) fn to_additive_hunks(
     hunks_to_keep: impl IntoIterator<Item = HunkHeader>,
     worktree_hunks: &[HunkHeader],
     worktree_hunks_no_context: &[HunkHeader],

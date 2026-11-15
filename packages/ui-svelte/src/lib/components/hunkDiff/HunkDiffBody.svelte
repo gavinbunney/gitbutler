@@ -20,6 +20,7 @@
 	interface Props {
 		filePath: string;
 		selectable?: boolean;
+		selectLinesOnContent?: boolean;
 		content: ContentSection[];
 		tabSize?: number;
 		wrapText?: boolean;
@@ -41,6 +42,7 @@
 		comment,
 		filePath,
 		selectable: isSelectable,
+		selectLinesOnContent,
 		content,
 		onLineClick,
 		wrapText = true,
@@ -151,6 +153,8 @@
 	const renderChunks = $derived(divideIntoChunks(renderRows, 10));
 </script>
 
+<svelte:window onmouseup={() => lineSelection.onEnd()} onblur={() => lineSelection.onEnd()} />
+
 {#if commentRow}
 	<tbody>
 		<tr>
@@ -162,14 +166,15 @@
 	</tbody>
 {/if}
 
-{#each renderChunks as chunkRows}
+{#each renderChunks as chunkRows, chunkIndex}
 	<tbody>
 		{#each chunkRows as row, idx (lineIdKey( { oldLine: row.beforeLineNumber, newLine: row.afterLineNumber }, ))}
 			<HunkDiffRow
 				{minWidth}
-				{idx}
+				idx={chunkIndex * 10 + idx}
 				{row}
 				{clickable}
+				{selectLinesOnContent}
 				{lineSelection}
 				{tabSize}
 				{wrapText}

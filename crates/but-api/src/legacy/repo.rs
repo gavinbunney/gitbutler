@@ -130,6 +130,16 @@ pub fn pre_commit_hook_diffspecs(
 
     hooks::pre_commit_with_tree(ctx, new_tree.detach())
 }
+
+/// Run pre-commit against Git's staging area and retain any hook-staged changes.
+#[but_api]
+pub fn pre_commit_hook_index(
+    ctx: &but_ctx::Context,
+    _perm: &mut but_core::sync::RepoExclusive,
+) -> Result<HookResult> {
+    hooks::pre_commit_with_index(ctx)
+}
+
 #[but_api]
 #[instrument(err(Debug))]
 pub fn post_commit_hook(ctx: &but_ctx::Context) -> Result<HookResult> {

@@ -7,7 +7,6 @@
 	import { mergeUnlisten } from "@gitbutler/ui-svelte/utils/mergeUnlisten";
 	import { pxToRem, remToPx } from "@gitbutler/ui-svelte/utils/pxToRem";
 	import { getContext, onDestroy } from "svelte";
-	import { on } from "svelte/events";
 	import { writable } from "svelte/store";
 	import type { ResizeGroup } from "$lib/floating/resizeGroup";
 	import type { SashLayerContext } from "$lib/sash/sashLayer";
@@ -110,8 +109,7 @@
 		  }
 		| undefined;
 
-	let unsubUp: (() => void) | undefined;
-	let unsubMove: (() => void) | undefined;
+	let pointerId: number | undefined;
 
 	// Last pointer position tracked per-drag-frame for arithmetic sash movement.
 	let lastDragClientX = 0;
@@ -155,10 +153,12 @@
 	}
 
 	function cleanupPointerDragState() {
-		unsubUp?.();
-		unsubUp = undefined;
-		unsubMove?.();
-		unsubMove = undefined;
+		const capturedPointer = pointerId;
+		pointerId = undefined;
+
+		if (capturedPointer !== undefined && resizerDiv?.hasPointerCapture(capturedPointer)) {
+			resizerDiv.releasePointerCapture(capturedPointer);
+		}
 
 		if (pointerMoveRaf !== undefined) {
 			cancelAnimationFrame(pointerMoveRaf);
@@ -178,11 +178,14 @@
 		cleanupPointerDragState();
 	});
 
-	function onMouseDown(e: MouseEvent) {
+	function onMouseDown(e: PointerEvent) {
+		if (e.button !== 0 || disabled) return;
+
 		e.stopPropagation();
 		e.preventDefault();
-		unsubUp = on(document, "pointerup", onMouseUp);
-		unsubMove = on(document, "pointermove", onMouseMove);
+		resizerDiv?.setPointerCapture(e.pointerId);
+		pointerId = e.pointerId;
+		isResizing = true;
 
 		if (direction === "right") initial = e.clientX - viewport.clientWidth;
 		if (direction === "left") initial = window.innerWidth - e.clientX - viewport.clientWidth;
@@ -295,7 +298,8 @@
 	}
 
 	function onMouseMove(e: MouseEvent) {
-		isResizing = true;
+		if (!isResizing) return;
+
 		pendingPointerMove = {
 			clientX: e.clientX,
 			clientY: e.clientY,
@@ -313,15 +317,17 @@
 	}
 
 	function onMouseUp() {
+		if (!isResizing) return;
+
 		if (pointerMoveRaf !== undefined) {
 			cancelAnimationFrame(pointerMoveRaf);
 			pointerMoveRaf = undefined;
 		}
 		processPointerMove();
+		isResizing = false;
 		cleanupPointerDragState();
 		// Re-sync sash to exact geometry once at the end of drag.
 		layerCtx.requestLayout();
-		isResizing = false;
 		onResizing?.(false);
 	}
 
@@ -530,11 +536,17 @@
 	});
 </script>
 
+<svelte:window onblur={onMouseUp} />
+
 <div
 	role="presentation"
 	bind:this={resizerDiv}
 	data-no-drag
 	onpointerdown={onMouseDown}
+	onpointermove={onMouseMove}
+	onpointerup={onMouseUp}
+	onpointercancel={onMouseUp}
+	onlostpointercapture={onMouseUp}
 	ondblclick={() => {
 		onDblClick?.();
 		setValue(defaultValue);
@@ -561,6 +573,7 @@
 		cursor: var(--resizer-cursor);
 		/* background-color: rgba(255, 0, 0, 0.345); */
 		pointer-events: initial;
+		touch-action: none;
 
 		&.horizontal {
 			--resizer-cursor: col-resize;

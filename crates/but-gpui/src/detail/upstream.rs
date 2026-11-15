@@ -535,7 +535,8 @@ impl Detail {
     /// Whether the window leaves the diff out, as a pull request and what merged take its
     /// place.
     pub fn diff_hidden(&self, cx: &gpui::App) -> bool {
-        self.over_changes(cx)
+        self.staging_shown(cx)
+            || self.over_changes(cx)
             || self.showing_shipped(cx)
             || self.showing_branches_overview()
             || self.choosing_target(cx)

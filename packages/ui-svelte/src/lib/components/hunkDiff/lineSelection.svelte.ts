@@ -38,12 +38,13 @@ export default class LineSelection {
 	}
 
 	onStart(ev: MouseEvent, row: Row, index: number) {
-		if (ev.buttons !== 1) return;
+		if (ev.button !== 0) return;
 		if (this.mobileTouchDevice) return;
 		ev.preventDefault();
 		ev.stopPropagation();
 
 		this._selectionStart = index;
+		this._selectionEnd = index;
 		this.onLineClick?.({
 			index,
 			oldLine: row.beforeLineNumber,
@@ -58,21 +59,20 @@ export default class LineSelection {
 	onMoveOver(ev: MouseEvent, row: Row, index: number) {
 		if (this.mobileTouchDevice) return;
 		if (this._selectionStart === undefined) return;
-		if (ev.buttons === 1) {
-			ev.preventDefault();
-			ev.stopPropagation();
+		if (this._selectionEnd === index) return;
+		ev.preventDefault();
+		ev.stopPropagation();
 
-			this._selectionEnd = index;
-			this.onLineClick?.({
-				index,
-				oldLine: row.beforeLineNumber,
-				newLine: row.afterLineNumber,
-				shift: ev.shiftKey,
-				ctrlOrMeta: ev.ctrlKey || ev.metaKey,
-				startIndex: this._selectionStart,
-				rows: this.rows,
-			});
-		}
+		this._selectionEnd = index;
+		this.onLineClick?.({
+			index,
+			oldLine: row.beforeLineNumber,
+			newLine: row.afterLineNumber,
+			shift: ev.shiftKey,
+			ctrlOrMeta: ev.ctrlKey || ev.metaKey,
+			startIndex: this._selectionStart,
+			rows: this.rows,
+		});
 	}
 
 	onEnd() {

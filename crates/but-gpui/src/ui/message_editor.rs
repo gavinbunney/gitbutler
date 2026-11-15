@@ -28,6 +28,7 @@ pub struct MessageEditor {
     body: Entity<TextInput>,
     body_scroll: ScrollHandle,
     size: MessageSize,
+    fill: bool,
     _forwarded: [Subscription; 2],
 }
 
@@ -47,11 +48,20 @@ impl MessageEditor {
             body,
             body_scroll,
             size,
+            fill: false,
         }
     }
 
     pub fn text(&self, cx: &App) -> String {
         joined(self.title.read(cx).text(), self.body.read(cx).text())
+    }
+
+    /// Let a resizable composer own the editor's height.
+    pub fn fill_height(&mut self, fill: bool, cx: &mut Context<Self>) {
+        if self.fill != fill {
+            self.fill = fill;
+            cx.notify();
+        }
     }
 
     /// Whether what's written is `message`, however it spaced its title from its body.
@@ -117,6 +127,7 @@ impl Render for MessageEditor {
                 .cursor_text()
         };
         v_flex()
+            .when(self.fill, |el| el.h_full().min_h_0())
             .rounded(dp(theme.shape.card))
             .border_1()
             .border_color(if focused {
@@ -128,6 +139,7 @@ impl Render for MessageEditor {
             .line_height(dp(19.))
             .child(
                 part(&self.title)
+                    .flex_none()
                     .key_context("MessageTitle")
                     .font_weight(FontWeight::MEDIUM)
                     .when(self.size == MessageSize::Compact, |el| el.pr(dp(30.)))
@@ -152,6 +164,7 @@ impl Render for MessageEditor {
                     .id("message-body")
                     .min_h(dp(min_body))
                     .max_h(dp(max_body))
+                    .when(self.fill, |el| el.flex_1().min_h_0().max_h_full())
                     .overflow_y_scroll()
                     .track_scroll(&self.body_scroll),
             )

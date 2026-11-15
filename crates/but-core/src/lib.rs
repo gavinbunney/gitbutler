@@ -59,6 +59,7 @@ use serde::Serialize;
 pub mod diff;
 mod diff_types;
 pub mod index;
+pub mod staging;
 pub use diff_types::{DiffSpec, HunkHeader, ModeFlags};
 
 mod hunks;

@@ -548,6 +548,8 @@ pub(super) struct SavedActivity {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Prefs {
+    /// Show the shared Git index under Uncommitted changes.
+    pub staging_view: bool,
     pub appearance: Appearance,
     /// The colour scheme the app draws in while it's light.
     pub light_scheme: ColorScheme,

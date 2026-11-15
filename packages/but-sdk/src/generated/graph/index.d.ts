@@ -2431,6 +2431,15 @@ export type StackReference = {
   pullRequests: Record<string, number>;
 };
 
+/** Independent changes on each side of Git's shared index. */
+export type StagingStatus = {
+  staged: Array<TreeChange>;
+  unstaged: Array<TreeChange>;
+  ignoredChanges: Array<IgnoredWorktreeChange>;
+  /** Absent while the index contains unresolved conflicts. */
+  indexTree: string | null;
+};
+
 /** Information about the target reference, the one we want to integrate with. */
 export type Target = {
   /** The local or remote-tracking branch to integrate with. */

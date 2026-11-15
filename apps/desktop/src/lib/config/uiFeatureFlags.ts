@@ -12,5 +12,6 @@ export const autoSelectBranchCreationFeature = persisted(false, "autoSelectBranc
 export const rewrapCommitMessage = persistWithExpiration(true, "rewrap-commit-msg", 1440 * 30);
 export type StagingBehavior = "all" | "selection" | "none";
 export const stagingBehaviorFeature = persisted<StagingBehavior>("all", "feature-staging-behavior");
+export const workspaceDisplay = persisted<"staging" | "lanes">("lanes", "workspace-display");
 export const fModeEnabled = persisted(true, "f-mode");
 export const newlineOnEnter = persisted(false, "feature-newline-on-enter");

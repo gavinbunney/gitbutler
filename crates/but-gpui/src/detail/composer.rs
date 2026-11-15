@@ -1148,6 +1148,9 @@ impl Detail {
     }
 
     pub(super) fn commit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.staging_shown(cx) {
+            return self.commit_index(cx);
+        }
         let Some((project, worktree)) = self.selected_checkout() else {
             return;
         };
@@ -1295,7 +1298,7 @@ impl Detail {
 
     /// Whether the branch the composer showed went, as an agent can unapply or rename it, so
     /// `target` is elsewhere than picked: says where, once, rather than go there unseen.
-    fn target_went(
+    pub(super) fn target_went(
         &mut self,
         project: &ProjectId,
         target: &Option<FullName>,
@@ -1727,7 +1730,7 @@ impl Detail {
     /// Where the commit goes, said as `label`, which with `pickable` picks another branch, the
     /// main checkout's or a linked worktree's. A linked worktree's commits go on its own
     /// branches.
-    fn render_target_picker(
+    pub(super) fn render_target_picker(
         &self,
         label: String,
         pickable: bool,

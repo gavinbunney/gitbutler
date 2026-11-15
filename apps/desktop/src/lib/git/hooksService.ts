@@ -15,14 +15,14 @@ export class HooksService {
 	}
 
 	// Promise-based wrapper methods with toast handling
-	async runPreCommitHooks(projectId: string, changes: DiffSpec[]): Promise<void> {
+	async runPreCommitHooks(projectId: string, changes: DiffSpec[] | "index"): Promise<void> {
 		const loadingToastId = chipToasts.loading("Started pre-commit hooks");
 
 		try {
-			const result = await this.backendApi.endpoints.preCommitDiffspecs.mutate({
-				projectId,
-				changes,
-			});
+			const result =
+				changes === "index"
+					? await this.backendApi.endpoints.preCommitIndex.mutate({ projectId })
+					: await this.backendApi.endpoints.preCommitDiffspecs.mutate({ projectId, changes });
 
 			if (result?.status === "failure") {
 				chipToasts.removeChipToast(loadingToastId);

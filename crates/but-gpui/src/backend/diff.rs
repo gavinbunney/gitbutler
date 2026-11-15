@@ -562,7 +562,7 @@ fn annotate_conflict(path: &str, conflict: &mut Conflict) {
 /// One file's diff, reused from `previous` when its patch is the same, else parsed and,
 /// with `annotate`, highlighted and given scope names while it changes no more lines than
 /// that, and with `draw_svgs`, drawn when it's an SVG.
-fn load_file(
+pub(super) fn load_file(
     repo: &gix::Repository,
     file: FileChange,
     context_lines: u32,

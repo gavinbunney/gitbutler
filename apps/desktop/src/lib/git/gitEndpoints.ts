@@ -1,4 +1,10 @@
-import { invalidatesItem, providesItem, providesList, ReduxTag } from "$lib/state/tags";
+import {
+	invalidatesItem,
+	invalidatesList,
+	providesItem,
+	providesList,
+	ReduxTag,
+} from "$lib/state/tags";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
 import type { DiffSpec } from "@gitbutler/but-sdk";
 import type { GitConfigSettings } from "@gitbutler/but-sdk";
@@ -63,6 +69,11 @@ export function buildGitEndpoints(build: BackendEndpointBuilder) {
 		preCommitDiffspecs: build.mutation<HookStatus, { projectId: string; changes: DiffSpec[] }>({
 			extraOptions: { command: "pre_commit_hook_diffspecs" },
 			query: (args) => args,
+		}),
+		preCommitIndex: build.mutation<HookStatus, { projectId: string }>({
+			extraOptions: { command: "pre_commit_hook_index" },
+			query: (args) => args,
+			invalidatesTags: [invalidatesList(ReduxTag.Diff), invalidatesList(ReduxTag.WorktreeChanges)],
 		}),
 		postCommit: build.mutation<HookStatus, { projectId: string }>({
 			extraOptions: { command: "post_commit_hook" },

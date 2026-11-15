@@ -6,8 +6,8 @@ use std::path::Path;
 use crate::support::RepoWithOrigin;
 use but_ctx::{Context, RepoOpenMode};
 use but_settings::AppSettings;
-use but_testsupport::open_repo;
-use gitbutler_repo::hooks::{HookResult, pre_commit_with_tree, pre_push};
+use but_testsupport::{CommandExt, git_at_dir, open_repo};
+use gitbutler_repo::hooks::{HookResult, pre_commit_with_index, pre_commit_with_tree, pre_push};
 
 fn context_for_repo(workdir: &Path) -> Context {
     let project = gitbutler_project::Project::from_path(workdir).expect("valid test project");
@@ -94,6 +94,48 @@ fn pre_commit_keeps_the_index_modified_time() -> anyhow::Result<()> {
         modified,
         "Git takes a same-size edit made in the same clock tick as its index entry for unchanged \
          once the index file is newer than the entry"
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn pre_commit_with_index_reads_saved_content_and_keeps_hook_staging() -> anyhow::Result<()> {
+    let test_project = RepoWithOrigin::default();
+    let workdir = test_project.local_repo.workdir().expect("non-bare");
+    let ctx = context_for_repo(workdir);
+    fs::write(workdir.join("saved.txt"), "saved\n")?;
+    git_at_dir(workdir).args(["add", "saved.txt"]).run();
+    fs::write(workdir.join("saved.txt"), "later\n")?;
+    let hook_path = ctx.gitdir.join("hooks/pre-commit");
+    fs::write(
+        &hook_path,
+        "#!/bin/sh\nset -eu\ngit show :saved.txt > hook-input\nprintf 'from hook\\n' > hook-added.txt\ngit add hook-added.txt\n",
+    )?;
+    fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755))?;
+
+    let result = pre_commit_with_index(&ctx)?;
+
+    assert_eq!(result, HookResult::Success, "the hook succeeds");
+    assert_eq!(
+        fs::read(workdir.join("hook-input"))?,
+        b"saved\n",
+        "the hook reads the saved version from Git's index"
+    );
+    assert_eq!(
+        fs::read(workdir.join("saved.txt"))?,
+        b"later\n",
+        "running the hook preserves later edits"
+    );
+    let repo = ctx.repo.get()?;
+    let index = repo.index_or_empty()?;
+    let added = index
+        .entry_by_path("hook-added.txt".into())
+        .expect("changes staged by the hook remain in the real index");
+    assert_eq!(
+        repo.find_blob(added.id)?.data,
+        b"from hook\n",
+        "the hook's staged contents remain available for the commit"
     );
     Ok(())
 }

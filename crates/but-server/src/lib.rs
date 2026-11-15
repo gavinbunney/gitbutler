@@ -441,6 +441,26 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         )
         .route("/tree_change_diffs", but_post(diff::tree_change_diffs_cmd))
         .route(
+            "/staging_status",
+            but_post(but_api::staging::staging_status_cmd),
+        )
+        .route(
+            "/pre_commit_hook_index",
+            but_post(legacy::repo::pre_commit_hook_index_cmd),
+        )
+        .route(
+            "/staging_stage",
+            but_post(but_api::staging::staging_stage_cmd),
+        )
+        .route(
+            "/staging_unstage",
+            but_post(but_api::staging::staging_unstage_cmd),
+        )
+        .route(
+            "/staging_commit",
+            but_post(but_api::staging::staging_commit_cmd),
+        )
+        .route(
             "/tree_change_diffs_from_source",
             but_post(diff::tree_change_diffs_from_source_cmd),
         )

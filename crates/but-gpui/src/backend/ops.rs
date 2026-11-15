@@ -288,7 +288,7 @@ fn pre_commit(ctx: &but_ctx::Context, changes: &[DiffSpec]) -> Result<()> {
 }
 
 /// Run the post-commit hook, and say what it printed if it failed: the commit stands.
-fn post_commit(ctx: &but_ctx::Context) -> Option<String> {
+pub(super) fn post_commit(ctx: &but_ctx::Context) -> Option<String> {
     match but_api::legacy::repo::post_commit_hook(ctx) {
         Ok(HookResult::Failure(ErrorData { error })) => Some(hook_output(&error)),
         Ok(_) => None,

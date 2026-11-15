@@ -88,4 +88,17 @@ export class FolderChangeDropData {
 
 export type ChangeDropData = FileChangeDropData | FolderChangeDropData;
 
-export type DropData = CommitDropData | ChangeDropData | HunkDropDataV3 | BranchDropData;
+export class StagingFileDropData {
+	constructor(
+		readonly projectId: string,
+		readonly side: "staged" | "unstaged",
+		readonly change: TreeChange,
+	) {}
+}
+
+export type DropData =
+	| CommitDropData
+	| ChangeDropData
+	| HunkDropDataV3
+	| BranchDropData
+	| StagingFileDropData;

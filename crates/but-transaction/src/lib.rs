@@ -817,6 +817,27 @@ where
         })
     }
 
+    /// Commit saved index content without reading the worktree for commit contents.
+    pub fn create_commit_from_tree(
+        &mut self,
+        base_tree: ObjectId,
+        staged_tree: ObjectId,
+        target: &gix::refs::FullNameRef,
+        message: &str,
+    ) -> anyhow::Result<CommitIdentifiers> {
+        self.rebase(|editor, _| {
+            let (rebase, selector) = but_workspace::commit::commit_create::commit_create_from_tree(
+                editor,
+                base_tree,
+                staged_tree,
+                target,
+                message,
+            )?;
+            let commit = rebase.lookup_commit(selector)?;
+            Ok((commit, rebase))
+        })
+    }
+
     pub fn insert_blank_commit(
         &mut self,
         relative_to: RelativeTo,

@@ -25,6 +25,7 @@
 		idx: number;
 		row: Row;
 		clickable?: boolean;
+		selectLinesOnContent?: boolean;
 		lineSelection: LineSelection;
 		tabSize: number;
 		wrapText: boolean;
@@ -43,6 +44,7 @@
 		idx,
 		row,
 		clickable: isClickable = false,
+		selectLinesOnContent = false,
 		lineSelection,
 		tabSize,
 		wrapText,
@@ -64,6 +66,7 @@
 
 	const locked = $derived(row.locks !== undefined && row.locks.length > 0);
 	const clickable = $derived(isClickable);
+	const selectOnContent = $derived(clickable && selectLinesOnContent);
 	const isSelectingForCommit = $derived(staged !== undefined && !hideCheckboxes);
 
 	function handleLockHover(locks: DependencyLock[]) {
@@ -233,6 +236,8 @@
 
 	<td
 		class="table__textContent"
+		class:select-lines={selectOnContent}
+		class:staged={selectOnContent && staged && isDeltaLine(row.type)}
 		style="--tab-size: {tabSize}; --pre-wrap: {wrapText ? 'pre-wrap' : 'pre'}"
 		class:readonly={true}
 		data-no-drag
@@ -240,6 +245,9 @@
 		class:diff-line-addition={row.type === SectionType.AddedLines}
 		class:selected={row.isSelected}
 		class:is-last={row.isLast}
+		onmousedown={selectOnContent ? (ev) => lineSelection.onStart(ev, row, idx) : undefined}
+		onmouseenter={selectOnContent ? (ev) => lineSelection.onMoveOver(ev, row, idx) : undefined}
+		onmouseup={selectOnContent ? () => lineSelection.onEnd() : undefined}
 		oncontextmenu={(ev) => {
 			ev.preventDefault();
 			ev.stopPropagation();
@@ -283,6 +291,19 @@
 		cursor: text;
 		tab-size: var(--tab-size);
 		user-select: text;
+
+		&.select-lines {
+			cursor: default;
+			user-select: none;
+
+			&.staged {
+				background-color: var(--focus-bg);
+			}
+
+			.table__row-header {
+				cursor: inherit;
+			}
+		}
 	}
 
 	.table__lockButton {

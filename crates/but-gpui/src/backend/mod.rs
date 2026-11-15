@@ -32,6 +32,7 @@ pub mod saved;
 #[cfg(target_os = "macos")]
 pub mod screenshot;
 pub mod settings;
+pub mod staging;
 pub mod upstream;
 pub mod watch;
 pub mod worktrees;

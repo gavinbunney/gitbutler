@@ -308,7 +308,12 @@ impl Detail {
         };
         if changes {
             let meta = meta_row(theme).child(meta_item(folder_icon, theme).child(name));
-            let title = page_title(Icon::FileDiff, theme).child(title_text("Uncommitted changes"));
+            let title = page_title(Icon::FileDiff, theme)
+                .child(title_text("Uncommitted changes"))
+                .when(self.staging_available(cx), |el| {
+                    el.child(div().flex_1())
+                        .child(self.render_staging_tabs(theme, cx))
+                });
             let target = Selection::Uncommitted(project.clone(), checkout.clone());
             return self.page_header(title, meta, target, None, None, theme);
         }

@@ -374,7 +374,10 @@ pub(super) struct CheckoutState {
 pub(super) enum PageState {
     /// A worktree's uncommitted changes. The commit being written on them is the home tile's
     /// detail's, the one that composes, by checkout.
-    Changes { files: FilesState },
+    Changes {
+        files: FilesState,
+        staging: super::staging::StagingState,
+    },
     /// A commit, a branch, a stack, or what a pull would bring in, by its diff. A branch and a
     /// commit only a remote has can show a pull request, and a branch a brief.
     Diff {
@@ -439,6 +442,7 @@ impl PageState {
         match selection {
             Selection::Uncommitted(..) => PageState::Changes {
                 files: FilesState::default(),
+                staging: super::staging::StagingState::default(),
             },
             Selection::Branch(..) | Selection::Upstream(..) => PageState::Diff {
                 files: FilesState::default(),
@@ -500,7 +504,7 @@ impl PageState {
     /// How its files are being looked at, on a page with files.
     pub(super) fn files(&self) -> Option<&FilesState> {
         match self {
-            PageState::Changes { files }
+            PageState::Changes { files, .. }
             | PageState::Diff { files, .. }
             | PageState::Branches { files, .. }
             | PageState::History { files, .. }
@@ -658,7 +662,7 @@ impl PageState {
     /// it leaves the detail's other fields free.
     pub(super) fn files_mut(&mut self) -> Option<&mut FilesState> {
         match self {
-            PageState::Changes { files }
+            PageState::Changes { files, .. }
             | PageState::Diff { files, .. }
             | PageState::Branches { files, .. }
             | PageState::History { files, .. }

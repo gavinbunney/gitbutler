@@ -31,6 +31,7 @@ mod rename;
 mod resolve;
 mod review_edit;
 mod slots;
+mod staging;
 mod upstream;
 mod worktree;
 
@@ -1553,6 +1554,9 @@ impl Detail {
     /// Keep the page, left at `left_at`, or where it was before if its diff never came back.
     fn put_page_away(&mut self, left_at: Option<page::Place>, cx: &mut Context<Self>) {
         let mut page = std::mem::replace(&mut self.page, page::PageState::Blank);
+        if let page::PageState::Changes { staging, .. } = &mut page {
+            staging.suspend();
+        }
         if let Some(files) = page.files_mut() {
             files.place = left_at.or(files.place.take());
             let filter = self.file_filter.read(cx).text().to_owned();
@@ -1625,6 +1629,9 @@ impl Detail {
     }
 
     fn key_for_selection(&self, cx: &App) -> Option<DiffKey> {
+        if self.staging_shown(cx) {
+            return None;
+        }
         let selection = self.selection()?;
         let store = self.store.read(cx);
         let source = match &selection {
@@ -1693,6 +1700,15 @@ impl Detail {
     /// Load what the selected page lists beside the diff: on selecting it (`force`), and
     /// when its project reloads, if what it lists may have changed.
     fn reload_page(&mut self, force: bool, cx: &mut Context<Self>) {
+        let staging = self.staging_shown(cx);
+        if let page::PageState::Changes { staging: state, .. } = &mut self.page {
+            state.shown = Some(staging);
+        }
+        self.message
+            .update(cx, |editor, cx| editor.fill_height(staging, cx));
+        if staging {
+            return self.load_staging(cx);
+        }
         match self.selection() {
             Some(Selection::Project(project)) => match self.project_tab() {
                 ProjectTab::History => self.load_history(&project, false, cx),
@@ -2916,6 +2932,9 @@ impl Detail {
 
     /// Have the diff's rows measured again, as their heights changed, keeping its place.
     pub(crate) fn remeasure(&mut self, cx: &mut Context<Self>) {
+        if let page::PageState::Changes { staging, .. } = &self.page {
+            staging.remeasure();
+        }
         let top = self.list.logical_scroll_top();
         let count = self.diff.as_ref().map_or(0, |diff| diff.rows.len());
         (self.list).reset_with_uniform_height(count, code_line(cx));
@@ -4180,6 +4199,9 @@ impl Render for Detail {
         let theme = Theme::get(cx).clone();
         let selection = self.selection();
         let body: AnyElement = match &selection {
+            Some(Selection::Uncommitted(project, Checkout::Main)) if self.staging_shown(cx) => {
+                self.render_staging(project, &theme, cx)
+            }
             None if self.store.read(cx).projects.is_empty() => welcome(&self.store, &theme, cx),
             None => empty_state(
                 None,

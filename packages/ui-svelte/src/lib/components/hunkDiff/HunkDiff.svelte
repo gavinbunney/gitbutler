@@ -33,6 +33,8 @@
 		stagedLines?: LineId[];
 		hideCheckboxes?: boolean;
 		selectable?: boolean;
+		/** Select whole lines when clicking or dragging their text. */
+		selectLinesOnContent?: boolean;
 		lineLocks?: LineLock[];
 		draggingDisabled?: boolean;
 		onChangeStage?: (staged: boolean) => void;
@@ -57,6 +59,7 @@
 		staged,
 		stagedLines,
 		selectable,
+		selectLinesOnContent,
 		hideCheckboxes,
 		lineLocks,
 		onChangeStage,
@@ -193,6 +196,7 @@
 					comment={hunk.comment}
 					{filePath}
 					{selectable}
+					{selectLinesOnContent}
 					content={hunk.contentSections}
 					{onLineClick}
 					{wrapText}

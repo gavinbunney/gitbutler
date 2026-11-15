@@ -15,10 +15,46 @@ import type {
 	IgnoredWorktreeChange,
 	TreeChange,
 	WorktreeChanges,
+	StagingStatus,
+	DiffSpec,
+	CommitCreateResult,
 } from "@gitbutler/but-sdk";
 
 export function buildWorktreeEndpoints(build: BackendEndpointBuilder) {
 	return {
+		stagingStatus: build.query<StagingStatus, { projectId: string }>({
+			extraOptions: { command: "staging_status" },
+			query: (args) => args,
+			providesTags: [providesList(ReduxTag.Diff), providesList(ReduxTag.Stacks)],
+		}),
+		stageFiles: build.mutation<void, { projectId: string; changes: DiffSpec[] }>({
+			extraOptions: { command: "staging_stage", actionName: "Stage files" },
+			query: (args) => args,
+			invalidatesTags: [invalidatesList(ReduxTag.Diff), invalidatesList(ReduxTag.WorktreeChanges)],
+		}),
+		unstageFiles: build.mutation<void, { projectId: string; changes: DiffSpec[] }>({
+			extraOptions: { command: "staging_unstage", actionName: "Unstage files" },
+			query: (args) => args,
+			invalidatesTags: [invalidatesList(ReduxTag.Diff), invalidatesList(ReduxTag.WorktreeChanges)],
+		}),
+		commitIndex: build.mutation<
+			CommitCreateResult,
+			{
+				projectId: string;
+				target: string;
+				expectedIndexTree: string;
+				message: string;
+			}
+		>({
+			extraOptions: { command: "staging_commit", actionName: "Commit staged files" },
+			query: (args) => args,
+			invalidatesTags: [
+				invalidatesList(ReduxTag.Diff),
+				invalidatesList(ReduxTag.WorktreeChanges),
+				invalidatesList(ReduxTag.Stacks),
+				invalidatesList(ReduxTag.StackDetails),
+			],
+		}),
 		// ── Worktree Changes ────────────────────────────────────────
 		/** The uncommitted changes in the linked `worktree`, or in the main checkout. */
 		worktreeChanges: build.query<WorktreeData, { projectId: string; worktree?: string }>({

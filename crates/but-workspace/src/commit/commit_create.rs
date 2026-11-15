@@ -1,8 +1,9 @@
-use anyhow::Result;
-use but_core::{DiffSpec, RefMetadata};
+use anyhow::{Result, ensure};
+use but_core::{DiffSpec, RefMetadata, RepositoryExt};
 use but_rebase::graph_rebase::{
     Editor, LookupStep, Pick, Selector, Step, SuccessfulRebase, ToSelector, mutate::InsertSide,
 };
+use gix::prelude::ObjectIdExt;
 
 use crate::commit_engine::{Destination, create_commit};
 
@@ -112,4 +113,67 @@ fn parent_commit_id_for_new_commit<'ws, 'meta, M: RefMetadata>(
         (Step::Reference { refname, .. }, _) => Some(editor.find_reference_target(refname)?.1.id),
         (Step::None, _) => None,
     })
+}
+
+/// Insert a commit containing the saved changes from `base_tree` to `staged_tree`.
+///
+/// The worktree is not read when building the commit. Materialization consumes
+/// the saved changes while retaining edits made after staging.
+pub fn commit_create_from_tree<'ws, 'meta, M: RefMetadata>(
+    mut editor: Editor<'ws, 'meta, M>,
+    base_tree: gix::ObjectId,
+    staged_tree: gix::ObjectId,
+    target: &gix::refs::FullNameRef,
+    message: &str,
+) -> Result<(SuccessfulRebase<'ws, 'meta, M>, Selector)> {
+    ensure!(
+        target.as_bstr().starts_with(b"refs/heads/") && !but_core::is_workspace_ref_name(target),
+        "Select a local branch for the staged commit"
+    );
+    ensure!(
+        base_tree != staged_tree,
+        "There are no staged changes to commit"
+    );
+    ensure!(!message.trim().is_empty(), "Enter a commit message");
+    let target = editor.select_reference(target)?;
+    let parent =
+        parent_commit_id_for_new_commit(&editor, editor.lookup_step(target)?, InsertSide::Below)?;
+    let tree = {
+        let repo = editor.repo();
+        let parent_tree = parent
+            .map(|id| {
+                but_core::Commit::from_id(id.attach(repo))?
+                    .tree_id_or_auto_resolution()
+                    .map(|id| id.detach())
+            })
+            .transpose()?
+            .unwrap_or_else(|| gix::ObjectId::empty_tree(repo.object_hash()));
+        let (options, conflict_kind) = repo.merge_options_fail_fast()?;
+        let mut merge = repo.merge_trees(
+            base_tree,
+            parent_tree,
+            staged_tree,
+            Default::default(),
+            options,
+        )?;
+        ensure!(
+            !merge.has_unresolved_conflicts(conflict_kind),
+            "The staged changes conflict with the selected branch"
+        );
+        merge.tree.write()?.detach()
+    };
+    let mut commit = editor.empty_commit()?;
+    let (author, committer) = editor.repo().commit_signatures()?;
+    commit.author = author;
+    commit.committer = committer;
+    commit.tree = tree;
+    commit.parents = parent.into_iter().collect();
+    commit.message = message.into();
+    let id = editor.new_commit(
+        commit,
+        but_rebase::commit::DateMode::CommitterKeepAuthorKeep,
+    )?;
+    editor.set_merge_base_override(staged_tree);
+    let selector = editor.insert(target, Step::new_untracked_pick(id), InsertSide::Below)?;
+    Ok((editor.rebase()?, selector))
 }

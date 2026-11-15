@@ -117,6 +117,9 @@ impl Detail {
     /// a file is edited in the diff, while the composer's open, or while a commit or an amend is placed without it, as with the
     /// navigator hidden.
     pub(super) fn key_context(&self, cx: &App) -> &'static str {
+        if self.staging_shown(cx) {
+            return "Staging";
+        }
         let store = self.store.read(cx);
         let held = (store.moving.as_ref()).filter(|moving| !moving.dragged(store));
         let placing = matches!(held, Some(Move { op: Op::Commit, .. }));

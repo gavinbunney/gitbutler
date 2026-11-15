@@ -4,7 +4,9 @@
 	import ReduxResult from "$components/shared/ReduxResult.svelte";
 	import MainViewport from "$components/views/MainViewport.svelte";
 	import MultiStackView from "$components/views/MultiStackView.svelte";
+	import SplitStagingView from "$components/views/SplitStagingView.svelte";
 	import UnassignedView from "$components/views/UnassignedView.svelte";
+	import { workspaceDisplay } from "$lib/config/uiFeatureFlags";
 	import { FILE_SELECTION_MANAGER } from "$lib/selection/fileSelectionManager.svelte";
 	import { createWorktreeSelection } from "$lib/selection/key";
 	import { UNCOMMITTED_SERVICE } from "$lib/selection/uncommittedService.svelte";
@@ -71,32 +73,87 @@
 	/>
 {/snippet}
 
-<MainViewport
-	testId={TestId.WorkspaceView}
-	name="workspace"
-	leftWidth={{ default: 280, min: 260 }}
-	preview={previewOpen ? leftPreview : undefined}
-	previewWidth={{ default: 480, min: 220 }}
-	rightWidth={{ default: 320, min: 220 }}
->
-	{#snippet left()}
-		<UnassignedView
-			{projectId}
-			{visibleRange}
-			onFileClick={(index) => {
-				startIndex = index;
-				multiDiffView?.jumpToIndex(index);
-			}}
-		/>
-	{/snippet}
-	{#snippet middle()}
-		<ReduxResult {projectId} result={stacksQuery?.result}>
-			{#snippet loading()}
-				<FullviewLoading />
+<div class="workspace-display">
+	<div class="display-options">
+		<div class="segment-control-container small" role="group" aria-label="Workspace display">
+			<button
+				type="button"
+				class="segment-control-item"
+				aria-pressed={$workspaceDisplay === "lanes"}
+				onclick={() => ($workspaceDisplay = "lanes")}>Lanes</button
+			>
+			<button
+				type="button"
+				class="segment-control-item"
+				aria-pressed={$workspaceDisplay === "staging"}
+				onclick={() => ($workspaceDisplay = "staging")}>Staging</button
+			>
+		</div>
+	</div>
+	{#if $workspaceDisplay === "staging"}
+		<SplitStagingView {projectId} />
+	{:else}
+		<MainViewport
+			testId={TestId.WorkspaceView}
+			name="workspace"
+			leftWidth={{ default: 280, min: 260 }}
+			preview={previewOpen ? leftPreview : undefined}
+			previewWidth={{ default: 480, min: 220 }}
+			rightWidth={{ default: 320, min: 220 }}
+		>
+			{#snippet left()}
+				<UnassignedView
+					{projectId}
+					{visibleRange}
+					onFileClick={(index) => {
+						startIndex = index;
+						multiDiffView?.jumpToIndex(index);
+					}}
+				/>
 			{/snippet}
-			{#snippet children(stacks, { projectId })}
-				<MultiStackView {projectId} {stacks} {selectionId} {scrollToStackId} {onScrollComplete} />
+			{#snippet middle()}
+				<ReduxResult {projectId} result={stacksQuery?.result}>
+					{#snippet loading()}
+						<FullviewLoading />
+					{/snippet}
+					{#snippet children(stacks, { projectId })}
+						<MultiStackView
+							{projectId}
+							{stacks}
+							{selectionId}
+							{scrollToStackId}
+							{onScrollComplete}
+						/>
+					{/snippet}
+				</ReduxResult>
 			{/snippet}
-		</ReduxResult>
-	{/snippet}
-</MainViewport>
+		</MainViewport>
+	{/if}
+</div>
+
+<style>
+	.workspace-display {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		min-width: 0;
+		height: 100%;
+		min-height: 0;
+	}
+	.display-options {
+		display: flex;
+		flex-shrink: 0;
+		padding: 6px 0;
+	}
+	.display-options button {
+		font-size: 12px;
+	}
+	.display-options button[aria-pressed="true"] {
+		background: var(--bg-1);
+		box-shadow: inset 0 0 0 1px var(--border-2);
+		color: var(--text-1);
+	}
+	.display-options button[aria-pressed="true"]::after {
+		display: none;
+	}
+</style>

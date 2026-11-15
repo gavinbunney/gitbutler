@@ -52,7 +52,7 @@ impl Detail {
     /// Whether a worktree's uncommitted changes have their header: unless the messages list in
     /// the diff instead.
     pub(super) fn changes_header_shown(&self, cx: &App) -> bool {
-        self.store.read(cx).prefs.shows(Part::ChangesHeader)
+        self.staging_available(cx) || self.store.read(cx).prefs.shows(Part::ChangesHeader)
     }
 
     /// Whether commit `id`'s page has its header: unless its message lists first among its

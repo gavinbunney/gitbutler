@@ -13,6 +13,26 @@ export const WORKTREE_SERVICE = new InjectionToken<WorktreeService>("WorktreeSer
 export class WorktreeService {
 	constructor(private backendApi: BackendApi) {}
 
+	stagingStatus(projectId: string) {
+		return this.backendApi.endpoints.stagingStatus.useQuery({ projectId });
+	}
+
+	fetchStagingStatus(projectId: string) {
+		return this.backendApi.endpoints.stagingStatus.fetch({ projectId }, { forceRefetch: true });
+	}
+
+	get stageFiles() {
+		return this.backendApi.endpoints.stageFiles.mutate;
+	}
+
+	get unstageFiles() {
+		return this.backendApi.endpoints.unstageFiles.mutate;
+	}
+
+	get commitIndex() {
+		return this.backendApi.endpoints.commitIndex.mutate;
+	}
+
 	treeChanges(projectId: string) {
 		return this.backendApi.endpoints.worktreeChanges.useQuery(
 			{ projectId },

@@ -47,10 +47,39 @@ enum RenameTracking {
     Disabled,
 }
 
-fn worktree_changes_inner(
+struct CollectedChanges {
+    staged: Vec<TreeChange>,
+    unstaged: Vec<TreeChange>,
+    ignored: Vec<IgnoredWorktreeChange>,
+    index_changes: Vec<gix::diff::index::Change>,
+    index_conflicts: Vec<(
+        BString,
+        Box<[Option<index_as_worktree::ConflictIndexEntry>; 3]>,
+    )>,
+}
+
+/// Read staged and unstaged changes separately, as Git's status does.
+pub fn staging_changes(repo: &gix::Repository) -> anyhow::Result<crate::staging::Status> {
+    let CollectedChanges {
+        mut staged,
+        mut unstaged,
+        ignored,
+        index_changes: _,
+        index_conflicts: _,
+    } = collect_changes(repo, RenameTracking::Always)?;
+    staged.sort_by(|a, b| a.path.cmp(&b.path));
+    unstaged.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(crate::staging::Status {
+        staged,
+        unstaged,
+        ignored,
+    })
+}
+
+fn collect_changes(
     repo: &gix::Repository,
     renames: RenameTracking,
-) -> anyhow::Result<WorktreeChanges> {
+) -> anyhow::Result<CollectedChanges> {
     let (tree_index_rewrites, worktree_rewrites) = match renames {
         RenameTracking::Always => {
             let rewrites = gix::diff::Rewrites::default(); /* standard Git rewrite handling for everything */
@@ -492,6 +521,27 @@ fn worktree_changes_inner(
             Origin::IndexWorktree => index_worktree_changes.push(change),
         }
     }
+
+    Ok(CollectedChanges {
+        staged: tree_index_changes,
+        unstaged: index_worktree_changes,
+        ignored: ignored_changes,
+        index_changes,
+        index_conflicts,
+    })
+}
+
+fn worktree_changes_inner(
+    repo: &gix::Repository,
+    renames: RenameTracking,
+) -> anyhow::Result<WorktreeChanges> {
+    let CollectedChanges {
+        staged: tree_index_changes,
+        unstaged: mut index_worktree_changes,
+        ignored: mut ignored_changes,
+        index_changes,
+        index_conflicts,
+    } = collect_changes(repo, renames)?;
 
     // gix emits index/worktree status in thread-pool completion order; sort to make claims
     // deterministic. Deletions go first as merging them can put a freed path back on the

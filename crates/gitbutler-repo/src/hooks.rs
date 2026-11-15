@@ -158,31 +158,7 @@ pub fn pre_commit_with_tree(ctx: &Context, tree_id: gix::ObjectId) -> Result<Hoo
             index.write()?;
         }
 
-        Ok(
-            match git2_hooks::hooks_pre_commit(repo, husky_search_paths(ctx))? {
-                H::NoHookFound => HookResult::NotConfigured,
-                H::Run(HookRunResponse {
-                    stdout,
-                    stderr,
-                    code,
-                    ..
-                }) => {
-                    if code == 0 {
-                        HookResult::Success
-                    } else {
-                        // If the output contains GITBUTLER_ERROR, it's the hook an older GitButler
-                        // installed to block commits on gitbutler/workspace - not a failure
-                        if stdout.contains("GITBUTLER_ERROR") || stderr.contains("GITBUTLER_ERROR")
-                        {
-                            HookResult::Success
-                        } else {
-                            let error = join_output(stdout, stderr, Some(code));
-                            HookResult::Failure(ErrorData { error })
-                        }
-                    }
-                }
-            },
-        )
+        pre_commit_with_index(ctx)
     })();
 
     if let Err(err) = restore_index(repo, &index_path, &backup_path, had_index) {
@@ -191,6 +167,36 @@ pub fn pre_commit_with_tree(ctx: &Context, tree_id: gix::ObjectId) -> Result<Hoo
     }
     scopeguard::ScopeGuard::into_inner(guard);
     hook_result
+}
+
+/// Run pre-commit against the real index, retaining changes staged by the hook.
+pub fn pre_commit_with_index(ctx: &Context) -> Result<HookResult> {
+    #[expect(deprecated, reason = "libgit2 hook adapter boundary")]
+    let repo = &*ctx.git2_repo.get()?;
+    Ok(
+        match git2_hooks::hooks_pre_commit(repo, husky_search_paths(ctx))? {
+            H::NoHookFound => HookResult::NotConfigured,
+            H::Run(HookRunResponse {
+                stdout,
+                stderr,
+                code,
+                ..
+            }) => {
+                if code == 0 {
+                    HookResult::Success
+                } else {
+                    // If the output contains GITBUTLER_ERROR, it's the hook an older GitButler
+                    // installed to block commits on gitbutler/workspace - not a failure
+                    if stdout.contains("GITBUTLER_ERROR") || stderr.contains("GITBUTLER_ERROR") {
+                        HookResult::Success
+                    } else {
+                        let error = join_output(stdout, stderr, Some(code));
+                        HookResult::Failure(ErrorData { error })
+                    }
+                }
+            }
+        },
+    )
 }
 
 fn restore_index(
